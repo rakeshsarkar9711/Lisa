@@ -203,3 +203,5 @@ In this document, has info of all episodes already notified to any user and the 
 ### News Article Page
 
 ![News Article Page 1](https://github.com/ErickLimaS/anime-website/assets/69987890/de58a15a-eed4-4cdc-9249-900a90c21c50)
+#   L i s a  
+ 
