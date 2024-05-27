@@ -84,7 +84,7 @@ async function Footer() {
                             <h5>About</h5>
 
                             <ul>
-                                <li><Link href="https://github.com/ErickLimaS/anime-website/" target='_blank'>This Project</Link></li>
+                                <li><Link href="" target='_blank'>This Project</Link></li>
                                 <li><Link href="https://anilist.gitbook.io/anilist-apiv2-docs/" target='_blank'>AniList API</Link></li>
                                 <li><Link href="https://docs.consumet.org/" target='_blank'>Consumet API</Link></li>
                                 <li><Link href="https://github.com/ghoshRitesh12/aniwatch-api" target='_blank'>Aniwatch API</Link></li>
