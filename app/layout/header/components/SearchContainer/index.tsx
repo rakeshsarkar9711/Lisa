@@ -15,6 +15,7 @@ import { initFirebase } from '@/app/firebaseApp';
 import { doc, getDoc, getFirestore } from 'firebase/firestore';
 import axios from 'axios';
 import { MediaDbOffline } from '@/app/ts/interfaces/dbOffilineInterface';
+import { debounce } from 'lodash';
 
 const showUpMotion = {
   hidden: { y: '-40px', opacity: 0 },
@@ -36,57 +37,49 @@ function SearchContainer() {
   const [searchResults, setSearchResults] = useState<ApiDefaultResult[] | MediaDbOffline[] | null>(null);
   const [searchInput, setSearchInput] = useState('');
 
-  const fetchResultsOnChange = useCallback(async (value: string) => {
-    if (searchType === 'anilist') {
-      setSearchResults(null);
-    }
+  const fetchResultsOnChange = useCallback(
+    debounce(async (value: string) => {
+      if (value.length <= 2) {
+        setSearchResults(null);
+        return;
+      }
 
-    setSearchType('offline');
+      setIsLoading(true);
+      try {
+        if (searchType === 'offline') {
+          const { data } = await axios.get(`${process.env.NEXT_PUBLIC_NEXT_INTERNAL_API_URL}?title=${value}`);
+          setSearchResults(data.data as MediaDbOffline[]);
+        } else {
+          let showAdultContent = false;
+          if (user) {
+            const docRef = doc(db, 'users', user.uid);
+            const docSnap = await getDoc(docRef);
+            showAdultContent = docSnap.exists() ? docSnap.data().showAdultContent : false;
+          }
+          const result = await anilist.getSeachResults(value, showAdultContent);
+          setSearchResults(result as ApiDefaultResult[]);
+        }
+      } catch (error) {
+        console.error('Error fetching search results:', error);
+        setSearchResults(null);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 300),
+    [searchType, user, db]
+  );
+
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
     setSearchInput(value);
+    fetchResultsOnChange(value);
+  };
 
-    if (value.length <= 2) {
-      setSearchResults(null);
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const { data } = await axios.get(`${process.env.NEXT_PUBLIC_NEXT_INTERNAL_API_URL}?title=${value}`);
-      setSearchResults(data.data as MediaDbOffline[]);
-    } catch (error) {
-      console.error('Error fetching search results:', error);
-      setSearchResults(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [searchType]);
-
-  const searchValue = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
+  const searchValue = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSearchType('anilist');
-    setSearchResults(null);
-
-    let showAdultContent = false;
-    if (user) {
-      const docRef = doc(db, 'users', user.uid);
-      const docSnap = await getDoc(docRef);
-      showAdultContent = docSnap.exists() ? docSnap.data().showAdultContent : false;
-    }
-
-    const query = searchInput;
-    if (!query) return;
-
-    setIsLoading(true);
-    try {
-      const result = await anilist.getSeachResults(query, showAdultContent);
-      setSearchResults(result as ApiDefaultResult[]);
-    } catch (error) {
-      console.error('Error during Anilist search:', error);
-      setSearchResults(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user, searchInput, db]);
+    fetchResultsOnChange(searchInput);
+  };
 
   const toggleSearchBarMobile = (action: boolean) => {
     setIsMobileSearchBarOpen(action);
@@ -115,7 +108,8 @@ function SearchContainer() {
               type="text"
               placeholder="Search..."
               name="searchField"
-              onChange={(e) => fetchResultsOnChange(e.target.value)}
+              onChange={handleInputChange}
+              value={searchInput}
             />
             <button type="submit" disabled={isLoading} aria-label="Begin Search">
               {isLoading ? <LoadingIcon alt="Loading Icon" width={16} height={16} /> : <SearchIcon alt="Search Icon" width={16} height={16} />}
@@ -140,7 +134,8 @@ function SearchContainer() {
                   placeholder="Search..."
                   name="searchField"
                   disabled={isLoading}
-                  onChange={(e) => setSearchInput(e.target.value)}
+                  onChange={handleInputChange}
+                  value={searchInput}
                 />
                 <button type="submit" disabled={isLoading} aria-label="Begin Search">
                   {isLoading ? <LoadingIcon alt="Loading Icon" width={16} height={16} /> : <SearchIcon alt="Search Icon" width={16} height={16} />}
